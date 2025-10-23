@@ -1,0 +1,7 @@
+## Interface: 110002
+## Title: Find Second Stat
+## Notes: Displays the highest secondary stat in your party
+## Author: bhkim
+## Version: 1.0.0
+
+FindHighestSecondStat.lua

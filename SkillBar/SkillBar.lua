@@ -206,8 +206,8 @@ end
 local function LoadSettings()
     -- 프레임 위치 복원
     if SkillBarDB.framePosition and SkillBarDB.framePosition.point and
-       SkillBarDB.framePosition.relativePoint and SkillBarDB.framePosition.xOfs and
-       SkillBarDB.framePosition.yOfs then
+        SkillBarDB.framePosition.relativePoint and SkillBarDB.framePosition.xOfs and
+        SkillBarDB.framePosition.yOfs then
         local pos = SkillBarDB.framePosition
         mainFrame:ClearAllPoints()
         mainFrame:SetPoint(pos.point, UIParent, pos.relativePoint, pos.xOfs, pos.yOfs)
