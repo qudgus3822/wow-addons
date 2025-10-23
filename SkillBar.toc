@@ -1,0 +1,8 @@
+## Interface: 110002
+## Title: Skill Bar
+## Notes: Custom action bar with cooldown display
+## Author: bhkim
+## Version: 1.1
+## SavedVariables: SkillBarDB
+
+SkillBar.lua
