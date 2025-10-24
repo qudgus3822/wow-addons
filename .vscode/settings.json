@@ -15,7 +15,9 @@
         "~\\.vscode\\extensions\\ketho.wow-api-0.21.0\\Annotations\\Core"
     ],
     "Lua.diagnostics.globals": [
-        "SlashCmdList"
+        "SlashCmdList",
+        "UIFrameFlash",
+        "UIFrameFlashStop"
     ],
     "Lua.type.weakUnionCheck": true
 }

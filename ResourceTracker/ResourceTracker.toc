@@ -1,0 +1,9 @@
+## Interface: 110002
+## Title: Resource Tracker
+## Notes: Tracks resources and health for player
+## Author: bhkim
+## Version: 1.0.0
+
+#ResourceTracker.lua
+#HealthTracker.lua
+CombinedTracker.lua
