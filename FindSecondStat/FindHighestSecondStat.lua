@@ -8,7 +8,7 @@ local SECONDARY_STATS = {
     CRIT = 9,        -- CR_CRIT_MELEE (치명타, 통합됨)
     HASTE = 18,      -- CR_HASTE_MELEE (가속, 통합됨)
     MASTERY = 26,    -- CR_MASTERY (특화)
-    VERSATILITY = 29 -- CR_VERSATILITY_DAMAGE_DONE (유연성)
+    VERSATILITY = 29 -- CR_VERSATILITY(유연성)
 }
 
 -- 프레임 생성
