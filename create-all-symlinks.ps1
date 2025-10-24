@@ -2,10 +2,10 @@
 # Must run as Administrator!
 
 # WoW installation path (modify this to your actual path!)
-$WowAddonsPath = "D:\Source\Wow3"
+$WowAddonsPath = "E:\World of Warcraft\_retail_\Interface\AddOns"
 
 # Source base path - ALL folders here will be symlinked
-$SourceBasePath = "D:\Source\Wow"
+$SourceBasePath = "D:\Source\wow-addons"
 
 Write-Host "========================================" -ForegroundColor Green
 Write-Host "WoW Auto Symlink Creator" -ForegroundColor Green

@@ -3,6 +3,6 @@
 ## Notes: Custom action bar with cooldown display
 ## Author: bhkim
 ## Version: 1.1
-## SavedVariables: SkillBarDB
+## SavedVariablesPerCharacter: SkillBarDB
 
 SkillBar.lua

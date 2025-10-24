@@ -1,26 +1,38 @@
 -- 상수 정의
 local ADDON_NAME = "SkillBar"
-local NUM_BUTTONS = 6
-local FRAME_WIDTH = 400
-local FRAME_HEIGHT = 50
+local NUM_BUTTONS = 12
+local BUTTONS_PER_ROW = 6
 local BUTTON_SIZE = 40
 local BUTTON_SPACING = 50
 local BUTTON_PADDING = 10
+local ROW_SPACING = 10
 local UPDATE_INTERVAL = 0.1
+
+-- 프레임 크기 계산 (버튼 영역에 딱 맞게)
+local FRAME_WIDTH = (BUTTON_PADDING * 2) + (BUTTON_SIZE * BUTTONS_PER_ROW) + (BUTTON_SPACING - BUTTON_SIZE) * (BUTTONS_PER_ROW - 1)
+local FRAME_HEIGHT = (BUTTON_PADDING * 2) + (BUTTON_SIZE * 2) + ROW_SPACING
 
 -- 데이터베이스 초기화
 SkillBarDB = SkillBarDB or {
     buttonSpells = {},
-    framePosition = nil
+    framePosition = nil,
+    isLocked = true
 }
+
+-- Locked state
+local isLocked = true
 
 -- 프레임 생성
 local mainFrame = CreateFrame("Frame", "SkillBarFrame", UIParent)
 mainFrame:SetSize(FRAME_WIDTH, FRAME_HEIGHT)
 mainFrame:SetMovable(true)
-mainFrame:EnableMouse(true)
+mainFrame:EnableMouse(false) -- Start locked
 mainFrame:RegisterForDrag("LeftButton")
-mainFrame:SetScript("OnDragStart", mainFrame.StartMoving)
+mainFrame:SetScript("OnDragStart", function(self)
+    if not isLocked then
+        self:StartMoving()
+    end
+end)
 mainFrame:SetScript("OnDragStop", function(self)
     self:StopMovingOrSizing()
     -- 프레임 위치 저장
@@ -45,7 +57,14 @@ local buttons = {}
 local function CreateSkillButton(index)
     local button = CreateFrame("Button", "SkillBarButton" .. index, mainFrame, "SecureActionButtonTemplate")
     button:SetSize(BUTTON_SIZE, BUTTON_SIZE)
-    button:SetPoint("LEFT", mainFrame, "LEFT", BUTTON_PADDING + (index - 1) * BUTTON_SPACING, 0)
+
+    -- 2줄 배치 계산
+    local row = math.floor((index - 1) / BUTTONS_PER_ROW)
+    local col = (index - 1) % BUTTONS_PER_ROW
+    local xOffset = BUTTON_PADDING + col * BUTTON_SPACING
+    local yOffset = -BUTTON_PADDING - row * (BUTTON_SIZE + ROW_SPACING)
+
+    button:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", xOffset, yOffset)
 
     -- 아이콘 텍스처
     button.icon = button:CreateTexture(nil, "ARTWORK")
@@ -53,10 +72,12 @@ local function CreateSkillButton(index)
     button.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
 
     -- 테두리
-    button.border = button:CreateTexture(nil, "OVERLAY")
-    button.border:SetAllPoints(true)
-    button.border:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
-    button.border:SetBlendMode("ADD")
+    -- button.border = button:CreateTexture(nil, "OVERLAY")
+    -- button.border:SetSize(BUTTON_SIZE * 1.6, BUTTON_SIZE * 1.6)
+    -- button.border:SetPoint("CENTER", button, "CENTER", 0, 0)
+    -- button.border:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
+    -- button.border:SetBlendMode("ADD")
+    -- button.border:SetAlpha(0.3)
 
     -- 쿨타임 텍스트
     button.cooldownText = button:CreateFontString(nil, "OVERLAY")
@@ -68,6 +89,8 @@ local function CreateSkillButton(index)
     button.cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
     button.cooldown:SetAllPoints(button.icon)
     button.cooldown:SetDrawEdge(false)
+    button.cooldown:SetDrawBling(false)
+    button.cooldown:SetHideCountdownNumbers(true)
 
     -- 스킬 ID 저장 변수
     button.spellID = nil
@@ -96,8 +119,20 @@ end
 local function UpdateCooldowns()
     for i, button in ipairs(buttons) do
         if button.spellID then
-            -- 안전하게 쿨다운 정보 가져오기
-            local cooldownInfo = C_Spell.GetSpellCooldown(button.spellID)
+            -- 스킬 오버라이드 체크 (스킬이 다른 스킬로 변경되었는지 확인)
+            local currentSpellID = C_Spell.GetOverrideSpell(button.spellID) or button.spellID
+
+            -- 현재 표시된 스킬과 다르면 아이콘 업데이트
+            if button.currentDisplaySpellID ~= currentSpellID then
+                button.currentDisplaySpellID = currentSpellID
+                local spellTexture = C_Spell.GetSpellTexture(currentSpellID)
+                if spellTexture then
+                    button.icon:SetTexture(spellTexture)
+                end
+            end
+
+            -- 안전하게 쿨다운 정보 가져오기 (현재 표시된 스킬 기준)
+            local cooldownInfo = C_Spell.GetSpellCooldown(currentSpellID)
 
             if cooldownInfo and cooldownInfo.startTime and cooldownInfo.duration then
                 if cooldownInfo.startTime > 0 and cooldownInfo.duration > 0 then
@@ -124,14 +159,24 @@ local function UpdateCooldowns()
                 button.cooldownText:Hide()
             end
 
-            -- 스킬 사용 가능 여부 확인
-            local usable = C_Spell.IsSpellUsable(button.spellID)
+            -- 스킬 사용 가능 여부 확인 (현재 표시된 스킬 기준)
+            local usable = C_Spell.IsSpellUsable(currentSpellID)
             if usable then
                 button.icon:SetDesaturated(false)
                 button.icon:SetAlpha(1.0)
             else
                 button.icon:SetDesaturated(true)
                 button.icon:SetAlpha(0.5)
+            end
+
+            -- 스킬 강화 표시 (Proc Glow) - WoW 내부 로직 사용
+            local isOverlayed = C_Spell.IsSpellOverlayed(currentSpellID)
+
+            -- Glow 표시/숨김 (실제로 강화된 스킬만 표시)
+            if isOverlayed then
+                ActionButton_ShowOverlayGlow(button)
+            else
+                ActionButton_HideOverlayGlow(button)
             end
         end
     end
@@ -215,6 +260,14 @@ local function LoadSettings()
         mainFrame:SetPoint("CENTER", UIParent, "CENTER", 0, -200)
     end
 
+    -- Lock 상태 복원
+    if SkillBarDB.isLocked ~= nil then
+        isLocked = SkillBarDB.isLocked
+    else
+        isLocked = true
+    end
+    mainFrame:EnableMouse(not isLocked)
+
     -- 버튼 스킬 복원
     for buttonIndex, spellID in pairs(SkillBarDB.buttonSpells) do
         if buttons[buttonIndex] and spellID then
@@ -294,6 +347,16 @@ SlashCmdList["SKILLBAR"] = function(msg)
         mainFrame:SetPoint("CENTER", UIParent, "CENTER", 0, -200)
         SkillBarDB.framePosition = nil
         print("|cff00ff00[SkillBar]|r 위치 초기화됨")
+    elseif command == "unlock" or command == "move" then
+        isLocked = false
+        mainFrame:EnableMouse(true)
+        SkillBarDB.isLocked = false
+        print("|cffffff00[SkillBar]|r 프레임 잠금 해제됨. 드래그하여 이동하세요.")
+    elseif command == "lock" or command == "freeze" then
+        isLocked = true
+        mainFrame:EnableMouse(false)
+        SkillBarDB.isLocked = true
+        print("|cff00ff00[SkillBar]|r 프레임 잠금됨.")
     elseif command == "list" then
         print("|cff00ff00[SkillBar]|r 현재 설정된 스킬:")
         for i = 1, NUM_BUTTONS do
@@ -309,6 +372,8 @@ SlashCmdList["SKILLBAR"] = function(msg)
         print("  /skb set [버튼번호] [스킬ID] - 버튼에 스킬 설정")
         print("  /skb clear [버튼번호] - 버튼 스킬 제거")
         print("  /skb list - 현재 설정된 스킬 목록")
+        print("  /skb unlock - 프레임 잠금 해제 (이동 가능)")
+        print("  /skb lock - 프레임 잠금 (이동 불가)")
         print("  /skb show - 바 표시")
         print("  /skb hide - 바 숨김")
         print("  /skb reset - 위치 초기화")

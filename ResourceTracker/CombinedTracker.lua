@@ -8,7 +8,7 @@ local isLocked = true
 
 -- Create main container frame
 local container = CreateFrame("Frame", "CombinedTrackerFrame", UIParent)
-container:SetSize(300, 130)
+container:SetSize(200, 40)
 container:SetPoint("CENTER", 0, -100)
 container:SetMovable(true)
 container:EnableMouse(false) -- Start locked
@@ -22,7 +22,6 @@ container:SetScript("OnDragStop", container.StopMovingOrSizing)
 
 -- Container background
 local containerBg = container:CreateTexture(nil, "BACKGROUND")
-containerBg:SetAllPoints(container)
 containerBg:SetColorTexture(0, 0, 0, 0.7)
 
 -- Drag instruction text (only shown when unlocked)
@@ -37,7 +36,7 @@ dragText:SetTextColor(1, 1, 0, 1)
 
 -- Health bar frame
 local healthBar = CreateFrame("StatusBar", nil, container)
-healthBar:SetSize(280, 40)
+healthBar:SetSize(180, 20)
 healthBar:SetPoint("TOP", container, "TOP", 0, -10)
 healthBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
 healthBar:SetMinMaxValues(0, 100)
@@ -68,12 +67,12 @@ healthDetail:SetTextColor(0.8, 0.8, 0.8, 1)
 
 -- Maelstrom frame
 local maelstromFrame = CreateFrame("Frame", nil, container)
-maelstromFrame:SetSize(280, 60)
+maelstromFrame:SetSize(180, 20)
 maelstromFrame:SetPoint("TOP", healthBar, "BOTTOM", 0, -5)
 
 -- Maelstrom progress bar (bigger, on top)
 local maelstromBar = CreateFrame("StatusBar", nil, maelstromFrame)
-maelstromBar:SetSize(280, 35)
+maelstromBar:SetSize(180, 20)
 maelstromBar:SetPoint("TOP", maelstromFrame, "TOP", 0, 0)
 maelstromBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
 maelstromBar:SetMinMaxValues(0, 100)
@@ -82,44 +81,42 @@ maelstromBar:GetStatusBarTexture():SetHorizTile(false)
 
 -- Maelstrom text (on bar)
 local maelstromText = maelstromBar:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-maelstromText:SetPoint("CENTER", maelstromBar, "CENTER", 0, 0)
+maelstromText:SetPoint("LEFT", maelstromBar, "LEFT", 5, 0)
 maelstromText:SetFont("Fonts\\FRIZQT__.TTF", 22, "OUTLINE")
 maelstromText:SetText("0")
 
 -- Maelstrom label (below bar)
-local maelstromLabel = maelstromFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-maelstromLabel:SetPoint("TOP", maelstromBar, "BOTTOM", 0, -2)
-maelstromLabel:SetText("Maelstrom")
-maelstromLabel:SetTextColor(0.5, 0.8, 1, 1)
+-- local maelstromLabel = maelstromFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+-- maelstromLabel:SetPoint("TOP", maelstromBar, "BOTTOM", 0, -2)
+-- maelstromLabel:SetText("Maelstrom")
+-- maelstromLabel:SetTextColor(0.5, 0.8, 1, 1)
 
 -- Maelstrom bar background
 local maelstromBg = maelstromBar:CreateTexture(nil, "BACKGROUND")
 maelstromBg:SetAllPoints(maelstromBar)
 maelstromBg:SetColorTexture(0.2, 0.2, 0.2, 0.8)
 
--- Threshold lines for Maelstrom (30 and 60)
-local threshold30 = maelstromBar:CreateTexture(nil, "OVERLAY")
-threshold30:SetSize(2, 35)
-threshold30:SetColorTexture(1, 1, 1, 0.5)
-threshold30:SetPoint("LEFT", maelstromBar, "LEFT", (280 * 0.3), 0) -- 30% position
-
+-- Threshold lines for Maelstrom (60 and 90)
 local threshold60 = maelstromBar:CreateTexture(nil, "OVERLAY")
-threshold60:SetSize(2, 35)
+threshold60:SetSize(2, 20)
 threshold60:SetColorTexture(1, 1, 1, 0.5)
-threshold60:SetPoint("LEFT", maelstromBar, "LEFT", (280 * 0.6), 0) -- 60% position
+
+local threshold90 = maelstromBar:CreateTexture(nil, "OVERLAY")
+threshold90:SetSize(2, 20)
+threshold90:SetColorTexture(1, 1, 1, 0.5)
 
 -- Threshold labels
-local label30 = maelstromBar:CreateFontString(nil, "OVERLAY", "GameFontNormalTiny")
-label30:SetPoint("BOTTOM", threshold30, "TOP", 0, 1)
-label30:SetText("30")
-label30:SetTextColor(1, 1, 1, 0.6)
-label30:SetFont("Fonts\\FRIZQT__.TTF", 9, "OUTLINE")
-
 local label60 = maelstromBar:CreateFontString(nil, "OVERLAY", "GameFontNormalTiny")
 label60:SetPoint("BOTTOM", threshold60, "TOP", 0, 1)
 label60:SetText("60")
 label60:SetTextColor(1, 1, 1, 0.6)
 label60:SetFont("Fonts\\FRIZQT__.TTF", 9, "OUTLINE")
+
+local label90 = maelstromBar:CreateFontString(nil, "OVERLAY", "GameFontNormalTiny")
+label90:SetPoint("BOTTOM", threshold90, "TOP", 0, 1)
+label90:SetText("90")
+label90:SetTextColor(1, 1, 1, 0.6)
+label90:SetFont("Fonts\\FRIZQT__.TTF", 9, "OUTLINE")
 
 -- ========================================
 -- HELPER FUNCTIONS
@@ -138,18 +135,35 @@ end
 
 -- Update Maelstrom bar color
 local function UpdateMaelstromColor(value)
-    local r = 0.2 + (value / 100) * 0.3
-    local g = 0.5 + (value / 100) * 0.5
-    local b = 1.0
-    maelstromBar:SetStatusBarColor(r, g, b, 1)
+    if value >= 90 then
+        maelstromBar:SetStatusBarColor(1, 0, 1, 1) -- Magenta (90+)
+    elseif value >= 60 then
+        maelstromBar:SetStatusBarColor(0, 1, 1, 1) -- Cyan (60+)
+    else
+        local r = 0.2 + (value / 100) * 0.3
+        local g = 0.5 + (value / 100) * 0.5
+        local b = 1.0
+        maelstromBar:SetStatusBarColor(r, g, b, 1) -- Gradient blue (below 60)
+    end
 end
 
 -- ========================================
 -- UPDATE FUNCTIONS
 -- ========================================
 
+-- Throttle 변수
+local lastHealthUpdate = 0
+local HEALTH_UPDATE_THROTTLE = 0.15 -- 0.15초마다 한 번만 업데이트
+
 -- Update Health
 local function UpdateHealth()
+    -- Throttle 체크
+    local now = GetTime()
+    if now - lastHealthUpdate < HEALTH_UPDATE_THROTTLE then
+        return
+    end
+    lastHealthUpdate = now
+
     local current = UnitHealth("player")
     local max = UnitHealthMax("player")
     local percent = 0
@@ -164,7 +178,7 @@ local function UpdateHealth()
 
     -- Update texts
     healthPercent:SetText(string.format("%.0f%%", percent))
-    healthDetail:SetText(string.format("%s / %s", FormatNumber(current), FormatNumber(max)))
+    -- healthDetail:SetText(string.format("%s / %s", FormatNumber(current), FormatNumber(max)))
 
     -- Color based on health percentage
     if percent >= 75 then
@@ -201,7 +215,9 @@ local function UpdateMaelstrom()
     local _, class = UnitClass("player")
     if class ~= "SHAMAN" then
         maelstromFrame:Hide()
-        container:SetSize(300, 60) -- Smaller size without Maelstrom
+        container:SetSize(180, 20) -- Smaller size without Maelstrom
+        containerBg:SetSize(180, 20)
+        containerBg:SetPoint("TOPLEFT", healthBar, "TOPLEFT", 0, 0)
         return
     end
 
@@ -209,13 +225,17 @@ local function UpdateMaelstrom()
     local spec = GetSpecialization()
     if spec ~= 1 then
         maelstromFrame:Hide()
-        container:SetSize(300, 60) -- Smaller size without Maelstrom
+        container:SetSize(180, 20) -- Smaller size without Maelstrom
+        containerBg:SetSize(180, 20)
+        containerBg:SetPoint("TOPLEFT", healthBar, "TOPLEFT", 0, 0)
         return
     end
 
     -- Show Maelstrom frame
     maelstromFrame:Show()
-    container:SetSize(300, 130) -- Full size with Maelstrom
+    container:SetSize(180, 45) -- Full size with Maelstrom
+    containerBg:SetSize(180, 45)
+    containerBg:SetPoint("TOPLEFT", healthBar, "TOPLEFT", 0, 0)
 
     -- Get Maelstrom
     local current = UnitPower("player", Enum.PowerType.Maelstrom)
@@ -227,14 +247,17 @@ local function UpdateMaelstrom()
     maelstromBar:SetMinMaxValues(0, max)
     UpdateMaelstromColor(current)
 
-    -- Change text color based on amount
-    if current >= 60 then
-        maelstromText:SetTextColor(0, 1, 1, 1)       -- Cyan (ready for big spell)
-    elseif current >= 30 then
-        maelstromText:SetTextColor(0.5, 0.8, 1, 1)   -- Light blue
-    else
-        maelstromText:SetTextColor(0.3, 0.5, 0.7, 1) -- Dark blue (low)
+    -- Update threshold positions based on max value
+    if max > 0 then
+        threshold60:ClearAllPoints()
+        threshold60:SetPoint("LEFT", maelstromBar, "LEFT", (180 * 60 / max), 0)
+
+        threshold90:ClearAllPoints()
+        threshold90:SetPoint("LEFT", maelstromBar, "LEFT", (180 * 90 / max), 0)
     end
+
+    -- Keep text color white
+    maelstromText:SetTextColor(1, 1, 1, 1)
 end
 
 -- Update all
@@ -253,6 +276,8 @@ container:RegisterEvent("UNIT_POWER_UPDATE")
 container:RegisterEvent("UNIT_POWER_FREQUENT")
 container:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
 container:RegisterEvent("PLAYER_ENTERING_WORLD")
+container:RegisterEvent("PLAYER_ALIVE")
+container:RegisterEvent("PLAYER_DEAD")
 container:RegisterEvent("ADDON_LOADED")
 
 container:SetScript("OnEvent", function(self, event, ...)
@@ -273,7 +298,9 @@ container:SetScript("OnEvent", function(self, event, ...)
         if unit == "player" then
             UpdateMaelstrom()
         end
-    elseif event == "PLAYER_SPECIALIZATION_CHANGED" or event == "PLAYER_ENTERING_WORLD" then
+    elseif event == "PLAYER_SPECIALIZATION_CHANGED" or event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_ALIVE" then
+        UpdateAll()
+    elseif event == "PLAYER_DEAD" then
         UpdateAll()
     end
 end)
@@ -301,13 +328,11 @@ SlashCmdList["COMBINEDTRACKER"] = function(msg)
         isLocked = false
         container:EnableMouse(true)
         dragText:SetText("🔓 Drag to move")
-        containerBg:SetColorTexture(0.2, 0.2, 0, 0.8)
         print("|cffffff00[Combined Tracker]|r Frame UNLOCKED. Drag to move.")
     elseif command == "freeze" or command == "lock" then
         isLocked = true
         container:EnableMouse(false)
         dragText:SetText("")
-        containerBg:SetColorTexture(0, 0, 0, 0.7)
         print("|cff00ff00[Combined Tracker]|r Frame LOCKED.")
     else
         print("|cff00ff00[Combined Tracker]|r Commands:")
