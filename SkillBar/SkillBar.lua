@@ -170,14 +170,14 @@ local function UpdateCooldowns()
             end
 
             -- 스킬 강화 표시 (Proc Glow) - WoW 내부 로직 사용
-            local isOverlayed = C_Spell.IsSpellOverlayed(currentSpellID)
+            -- local isOverlayed = C_Spell.IsSpellOverlayed(currentSpellID)
 
-            -- Glow 표시/숨김 (실제로 강화된 스킬만 표시)
-            if isOverlayed then
-                ActionButton_ShowOverlayGlow(button)
-            else
-                ActionButton_HideOverlayGlow(button)
-            end
+            -- -- Glow 표시/숨김 (실제로 강화된 스킬만 표시)
+            -- if isOverlayed then
+            --     ActionButton_ShowOverlayGlow(button)
+            -- else
+            --     ActionButton_HideOverlayGlow(button)
+            -- end
         end
     end
 end
