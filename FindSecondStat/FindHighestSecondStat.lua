@@ -21,6 +21,12 @@ scanTooltip:SetOwner(UIParent, "ANCHOR_NONE")
 -- 검사된 파티원 스탯 저장소
 local inspectedStats = {}
 
+-- 검사 진행 상태 추적
+local printText = {}            -- 출력할 메시지 저장소
+local expectedInspectCount = 0  -- 검사할 총 인원 수
+local completedInspectCount = 0 -- 검사 완료된 인원 수
+local scanOutputSent = false    -- 결과 출력 여부 (중복 방지)
+
 -- 아이템 스탯 키 매핑
 local ITEM_STAT_KEYS = {
     CRIT = "ITEM_MOD_CRIT_RATING_SHORT",
@@ -31,10 +37,10 @@ local ITEM_STAT_KEYS = {
 
 -- 스탯별 재밌는 문구
 local STAT_MESSAGES = {
-    CRIT = "한방을 쎄게 때려요! 💥",
-    HASTE = "손이 번개같아요! ⚡",
-    MASTERY = "전문가에요! 🎯",
-    VERSATILITY = "다리를 일자로 찢어요 🌟"
+    CRIT = "크리 캐릭💥",
+    HASTE = "가속 캐릭⚡",
+    MASTERY = "특화 캐릭🎯",
+    VERSATILITY = "유연 캐릭🌟"
 }
 
 -- 툴팁에서 찾을 스탯 패턴 (한글/영문)
@@ -199,6 +205,45 @@ local function GetHighestStatForUnit(stats)
     return highestStatName, highestValue
 end
 
+-- 검사 결과 출력 (한 번만 실행)
+local function OutputScanResults()
+    if scanOutputSent then
+        return -- 이미 출력했으면 중복 방지
+    end
+    scanOutputSent = true
+
+    -- 모든 결과를 하나의 메시지로 합치기
+    local allMessages = ""
+    local messageCount = 0
+
+    for _, text in pairs(printText) do
+        local separator = (allMessages ~= "") and " / " or ""
+        local newMessage = allMessages .. separator .. text
+
+        -- 255자 제한 체크
+        if #newMessage > 250 then
+            -- 현재 메시지 전송
+            if allMessages ~= "" then
+                SendChatMessage(allMessages, "PARTY")
+                messageCount = messageCount + 1
+            end
+            -- 새 메시지 시작
+            allMessages = text
+        else
+            allMessages = newMessage
+        end
+    end
+
+    -- 마지막 메시지 전송
+    if allMessages ~= "" then
+        SendChatMessage(allMessages, "PARTY")
+        messageCount = messageCount + 1
+        print(string.format("|cff00ff00[검사 완료]|r %d명의 결과를 %d개 메시지로 전송했습니다.", completedInspectCount, messageCount))
+    else
+        print("|cffff0000[검사 완료]|r 검사된 결과가 없습니다.")
+    end
+end
+
 -- 검사 완료 이벤트 핸들러
 local function OnInspectReady(guid)
     local unit = nil
@@ -245,7 +290,17 @@ local function OnInspectReady(guid)
     local highestStatName = GetHighestStatForUnit(stats)
     local message = highestStatName and STAT_MESSAGES[highestStatName] or "스탯 정보 없음"
 
-    print(string.format("%s님은 %s", unitName, message))
+    -- 메시지를 저장소에 추가
+    printText[unitName] = string.format("%s님은 %s", unitName, message)
+    print(string.format("|cff888888[검사]|r %s님은 %s", unitName, message))
+
+    -- 완료 카운터 증가
+    completedInspectCount = completedInspectCount + 1
+
+    -- 모든 검사가 완료되면 즉시 출력
+    if completedInspectCount >= expectedInspectCount then
+        OutputScanResults()
+    end
 
     ClearInspectPlayer()
 end
@@ -258,27 +313,31 @@ local function InspectAllPartyMembers()
 
     -- 기존 데이터 초기화
     inspectedStats = {}
+    printText = {}
+    expectedInspectCount = 0
+    completedInspectCount = 0
+    scanOutputSent = false
 
     local inspectedCount = 0
 
     -- 플레이어 자신 (검사 없이 직접 가져오기)
-    local playerName = UnitName("player")
-    local playerStats = {
-        CRIT = GetCombatRating(SECONDARY_STATS.CRIT),
-        HASTE = GetCombatRating(SECONDARY_STATS.HASTE),
-        MASTERY = GetCombatRating(SECONDARY_STATS.MASTERY),
-        VERSATILITY = GetCombatRating(SECONDARY_STATS.VERSATILITY)
-    }
-    inspectedStats[playerName] = {
-        unit = "player",
-        stats = playerStats,
-        timestamp = time()
-    }
+    -- local playerName = UnitName("player")
+    -- local playerStats = {
+    --     CRIT = GetCombatRating(SECONDARY_STATS.CRIT),
+    --     HASTE = GetCombatRating(SECONDARY_STATS.HASTE),
+    --     MASTERY = GetCombatRating(SECONDARY_STATS.MASTERY),
+    --     VERSATILITY = GetCombatRating(SECONDARY_STATS.VERSATILITY)
+    -- }
+    -- inspectedStats[playerName] = {
+    --     unit = "player",
+    --     stats = playerStats,
+    --     timestamp = time()
+    -- }
 
-    -- 본인의 가장 높은 스탯 출력
-    local highestStatName = GetHighestStatForUnit(playerStats)
-    local message = highestStatName and STAT_MESSAGES[highestStatName] or "스탯 정보 없음"
-    print(string.format("%s님(본인)은 %s", playerName, message))
+    -- -- 본인의 가장 높은 스탯 출력
+    -- local highestStatName = GetHighestStatForUnit(playerStats)
+    -- local message = highestStatName and STAT_MESSAGES[highestStatName] or "스탯 정보 없음"
+    -- print(string.format("%s님(본인)은 %s", playerName, message))
 
     -- 파티원들 검사
     if IsInRaid() then
@@ -305,7 +364,18 @@ local function InspectAllPartyMembers()
         print("|cffff0000파티원이 없거나 검사할 수 없습니다.|r")
         print("|cffffff00TIP: 파티원이 근처에 있어야 검사할 수 있습니다.|r")
     else
+        expectedInspectCount = inspectedCount
         print(string.format("|cff00ff00%d명의 파티원 검사 요청 완료. 결과를 기다리는 중...|r", inspectedCount))
+
+        -- 1.5초 타이머 설정 (타임아웃)
+        C_Timer.After(1.5, function()
+            -- 아직 출력 안 했으면 지금까지 완료된 것만 출력
+            if not scanOutputSent then
+                print(string.format("|cffffff00[타임아웃]|r %d/%d명 검사 완료, 결과 출력 중...", completedInspectCount,
+                    expectedInspectCount))
+                OutputScanResults()
+            end
+        end)
     end
 end
 

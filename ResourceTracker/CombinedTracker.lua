@@ -260,7 +260,7 @@ container:SetScript("OnEvent", function(self, event, ...)
         local loadedAddon = ...
         if loadedAddon == "ResourceTracker" then
             print("|cff00ff00[Combined Tracker]|r Loaded!")
-            print("|cffffff00Drag the frame to move it.|r")
+            print("|cffffff00Use /ct move to unlock and drag the frame.|r")
             UpdateAll()
         end
     elseif event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" then
@@ -269,8 +269,8 @@ container:SetScript("OnEvent", function(self, event, ...)
             UpdateHealth()
         end
     elseif event == "UNIT_POWER_UPDATE" or event == "UNIT_POWER_FREQUENT" then
-        local unit, powerType = ...
-        if unit == "player" and powerType == "MAELSTROM" then
+        local unit = ...
+        if unit == "player" then
             UpdateMaelstrom()
         end
     elseif event == "PLAYER_SPECIALIZATION_CHANGED" or event == "PLAYER_ENTERING_WORLD" then
