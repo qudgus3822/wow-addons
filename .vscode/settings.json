@@ -16,5 +16,6 @@
     ],
     "Lua.diagnostics.globals": [
         "SlashCmdList"
-    ]
+    ],
+    "Lua.type.weakUnionCheck": true
 }

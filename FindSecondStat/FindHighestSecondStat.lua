@@ -11,15 +11,12 @@ local SECONDARY_STATS = {
     VERSATILITY = 29 -- CR_VERSATILITY_DAMAGE_DONE (유연성)
 }
 
-local STAT_NAMES = {
-    [9] = "치명타",
-    [18] = "가속",
-    [26] = "특화",
-    [29] = "유연성"
-}
-
 -- 프레임 생성
 local frame = CreateFrame("Frame")
+
+-- 툴팁 스캐닝용 숨겨진 프레임 생성
+local scanTooltip = CreateFrame("GameTooltip", "FindStatScanTooltip", nil, "GameTooltipTemplate")
+scanTooltip:SetOwner(UIParent, "ANCHOR_NONE")
 
 -- 검사된 파티원 스탯 저장소
 local inspectedStats = {}
@@ -32,7 +29,95 @@ local ITEM_STAT_KEYS = {
     VERSATILITY = "ITEM_MOD_VERSATILITY"
 }
 
--- 장비에서 2차 스탯 추출
+-- 스탯별 재밌는 문구
+local STAT_MESSAGES = {
+    CRIT = "한방을 쎄게 때려요! 💥",
+    HASTE = "손이 번개같아요! ⚡",
+    MASTERY = "전문가에요! 🎯",
+    VERSATILITY = "다리를 일자로 찢어요 🌟"
+}
+
+-- 툴팁에서 찾을 스탯 패턴 (한글/영문)
+local STAT_PATTERNS = {
+    CRIT = {
+        "치명타 %+?(%d+)",
+        "치명타 적중 %+?(%d+)",
+        "Critical Strike %+?(%d+)",
+        "Crit %+?(%d+)"
+    },
+    HASTE = {
+        "가속 %+?(%d+)",
+        "Haste %+?(%d+)"
+    },
+    MASTERY = {
+        "특화 %+?(%d+)",
+        "Mastery %+?(%d+)"
+    },
+    VERSATILITY = {
+        "유연성 %+?(%d+)",
+        "Versatility %+?(%d+)"
+    }
+}
+
+-- 툴팁에서 스탯 추출 (인챈트, 보석 포함)
+local function GetStatsFromTooltip(itemLink)
+    local stats = {
+        CRIT = 0,
+        HASTE = 0,
+        MASTERY = 0,
+        VERSATILITY = 0
+    }
+
+    if not itemLink then
+        return stats
+    end
+
+    -- 툴팁 초기화
+    scanTooltip:ClearLines()
+    scanTooltip:SetHyperlink(itemLink)
+
+    -- 툴팁의 모든 텍스트 라인 스캔
+    for i = 1, scanTooltip:NumLines() do
+        local leftText = _G["FindStatScanTooltipTextLeft" .. i]
+        local rightText = _G["FindStatScanTooltipTextRight" .. i]
+
+        if leftText then
+            local text = leftText:GetText()
+            if text then
+                -- 각 스탯 패턴으로 매칭 시도
+                for statName, patterns in pairs(STAT_PATTERNS) do
+                    for _, pattern in ipairs(patterns) do
+                        local value = text:match(pattern)
+                        if value then
+                            stats[statName] = stats[statName] + tonumber(value)
+                            break
+                        end
+                    end
+                end
+            end
+        end
+
+        if rightText then
+            local text = rightText:GetText()
+            if text then
+                -- 오른쪽 텍스트도 체크
+                for statName, patterns in pairs(STAT_PATTERNS) do
+                    for _, pattern in ipairs(patterns) do
+                        local value = text:match(pattern)
+                        if value then
+                            stats[statName] = stats[statName] + tonumber(value)
+                            break
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    return stats
+end
+
+-- 장비에서 2차 스탯 추출 (기본 스탯 + 툴팁 파싱)
 local function GetStatsFromEquipment(unit)
     local stats = {
         CRIT = 0,
@@ -45,6 +130,7 @@ local function GetStatsFromEquipment(unit)
     for slotId = 1, 19 do
         local itemLink = GetInventoryItemLink(unit, slotId)
         if itemLink then
+            -- 방법 1: 기본 아이템 스탯 (빠름, 인챈트/보석 제외)
             local itemStats = C_Item.GetItemStats(itemLink)
             if itemStats then
                 for statName, statKey in pairs(ITEM_STAT_KEYS) do
@@ -52,6 +138,17 @@ local function GetStatsFromEquipment(unit)
                     if value then
                         stats[statName] = stats[statName] + value
                     end
+                end
+            end
+
+            -- 방법 2: 툴팁 파싱 (느림, 인챈트/보석 포함)
+            local tooltipStats = GetStatsFromTooltip(itemLink)
+            for statName, _ in pairs(tooltipStats) do
+                -- 기본 스탯과 중복되지 않도록 차이만 추가
+                -- 툴팁에는 전체 스탯이 표시되므로, 기본 스탯보다 크면 그 차이가 인챈트/보석
+                if tooltipStats[statName] > (itemStats and itemStats[ITEM_STAT_KEYS[statName]] or 0) then
+                    local baseValue = itemStats and itemStats[ITEM_STAT_KEYS[statName]] or 0
+                    stats[statName] = stats[statName] + (tooltipStats[statName] - baseValue)
                 end
             end
         end
@@ -85,6 +182,21 @@ local function InspectUnit(unit)
     print(string.format("|cff00ff00[검사]|r '%s' 검사 시작...", UnitName(unit) or unit))
     NotifyInspect(unit)
     return true
+end
+
+-- 각 파티원의 가장 높은 스탯 찾기
+local function GetHighestStatForUnit(stats)
+    local highestStatName = nil
+    local highestValue = 0
+
+    for statName, value in pairs(stats) do
+        if value > highestValue then
+            highestValue = value
+            highestStatName = statName
+        end
+    end
+
+    return highestStatName, highestValue
 end
 
 -- 검사 완료 이벤트 핸들러
@@ -129,88 +241,13 @@ local function OnInspectReady(guid)
         timestamp = time()
     }
 
-    print(string.format("|cff00ff00[검사 완료]|r %s - 치명타:%d, 가속:%d, 특화:%d, 유연성:%d",
-        unitName,
-        stats.CRIT,
-        stats.HASTE,
-        stats.MASTERY,
-        stats.VERSATILITY))
+    -- 가장 높은 스탯 찾기
+    local highestStatName = GetHighestStatForUnit(stats)
+    local message = highestStatName and STAT_MESSAGES[highestStatName] or "스탯 정보 없음"
+
+    print(string.format("%s님은 %s", unitName, message))
 
     ClearInspectPlayer()
-end
-
--- 테스트: 특정 유닛의 2차 스탯 가져오기 시도
-local function TestGetUnitStats(unit)
-    if not UnitExists(unit) then
-        print(string.format("|cffff0000[테스트]|r 유닛 '%s'이(가) 존재하지 않습니다.", unit))
-        return
-    end
-
-    local unitName = UnitName(unit) or "Unknown"
-    print(string.format("|cff00ff00[테스트]|r %s (%s) 스탯 조회 시도:", unitName, unit))
-
-    -- GetCombatRating 테스트
-    print("\\n1. GetCombatRating() 테스트:")
-    for statName, statID in pairs(SECONDARY_STATS) do
-        local rating = GetCombatRating(statID)
-        local koreanName = STAT_NAMES[statID]
-        print(string.format("  %s (ID:%d): %d", koreanName, statID, rating or 0))
-    end
-
-    -- GetCombatRatingBonus 테스트
-    print("\\n2. GetCombatRatingBonus() 테스트:")
-    for statName, statID in pairs(SECONDARY_STATS) do
-        local bonus = GetCombatRatingBonus(statID)
-        local koreanName = STAT_NAMES[statID]
-        print(string.format("  %s (ID:%d): %.2f%%", koreanName, statID, bonus or 0))
-    end
-
-    -- UnitStat 테스트 (1차 스탯)
-    print("\\n3. UnitStat() 테스트 (1차 스탯):")
-    local stats = {
-        { name = "힘", index = 1 },
-        { name = "민첩", index = 2 },
-        { name = "체력", index = 3 },
-        { name = "지능", index = 4 }
-    }
-    for _, stat in ipairs(stats) do
-        local base, effective = UnitStat(unit, stat.index)
-        if base then
-            print(string.format("  %s: 기본=%d, 효과=%d", stat.name, base, effective))
-        else
-            print(string.format("  %s: |cffff0000조회 실패|r", stat.name))
-        end
-    end
-
-    print("\\n|cffaaaaaaTIP: player가 아닌 유닛은 대부분의 함수가 작동하지 않습니다.|r")
-end
-
--- 특정 유닛의 2차 스탯을 가져오는 함수
-local function GetUnitSecondaryStats(unit)
-    local stats = {}
-
-    -- UnitStat으로 기본 스탯 가져오기
-    local _, agility = UnitStat(unit, 2)   -- Agility
-    local _, intellect = UnitStat(unit, 4) -- Intellect
-
-    -- 타겟된 유닛의 경우 combat rating을 직접 가져올 수 있음
-    if unit == "player" then
-        for statName, statID in pairs(SECONDARY_STATS) do
-            local rating = GetCombatRating(statID)
-            stats[statName] = rating
-        end
-    else
-        -- 파티원의 경우 검사 시도
-        if UnitIsPlayer(unit) and CheckInteractDistance(unit, 1) then
-            -- 근처에 있으면 검사 가능
-            for statName, statID in pairs(SECONDARY_STATS) do
-                local rating = GetCombatRating(statID) -- 제한적
-                stats[statName] = rating
-            end
-        end
-    end
-
-    return stats, agility, intellect
 end
 
 -- 파티 전체 검사 시작
@@ -237,12 +274,11 @@ local function InspectAllPartyMembers()
         stats = playerStats,
         timestamp = time()
     }
-    print(string.format("|cff00ff00[본인]|r %s - 치명타:%d, 가속:%d, 특화:%d, 유연성:%d",
-        playerName,
-        playerStats.CRIT,
-        playerStats.HASTE,
-        playerStats.MASTERY,
-        playerStats.VERSATILITY))
+
+    -- 본인의 가장 높은 스탯 출력
+    local highestStatName = GetHighestStatForUnit(playerStats)
+    local message = highestStatName and STAT_MESSAGES[highestStatName] or "스탯 정보 없음"
+    print(string.format("%s님(본인)은 %s", playerName, message))
 
     -- 파티원들 검사
     if IsInRaid() then
@@ -273,137 +309,22 @@ local function InspectAllPartyMembers()
     end
 end
 
--- 파티 전체에서 가장 높은 스탯을 찾는 함수
-local function FindPartyHighestStats()
-    local partyStats = {}
-
-    -- 검사된 데이터가 있으면 사용
-    if next(inspectedStats) then
-        for playerName, data in pairs(inspectedStats) do
-            partyStats[playerName] = data
-        end
-    else
-        -- 검사된 데이터가 없으면 본인만 표시
-        local playerName = UnitName("player")
-        local playerStats = {
-            CRIT = GetCombatRating(SECONDARY_STATS.CRIT),
-            HASTE = GetCombatRating(SECONDARY_STATS.HASTE),
-            MASTERY = GetCombatRating(SECONDARY_STATS.MASTERY),
-            VERSATILITY = GetCombatRating(SECONDARY_STATS.VERSATILITY)
-        }
-        partyStats[playerName] = {
-            unit = "player",
-            stats = playerStats,
-            timestamp = time()
-        }
-    end
-
-    return partyStats
-end
-
--- 각 스탯별로 가장 높은 사람 찾기
-local function FindHighestForEachStat(partyStats)
-    local results = {}
-
-    -- SECONDARY_STATS의 각 스탯에 대해
-    for statKey, statID in pairs(SECONDARY_STATS) do
-        local highestName = nil
-        local highestValue = 0
-
-        -- 모든 파티원의 해당 스탯 비교
-        for playerName, data in pairs(partyStats) do
-            local value = data.stats[statKey] or 0
-            if value > highestValue then
-                highestValue = value
-                highestName = playerName
-            end
-        end
-
-        results[statKey] = {
-            playerName = highestName,
-            value = highestValue,
-            statID = statID
-        }
-    end
-
-    return results
-end
-
--- 결과 출력 함수
-local function PrintHighestStat()
-    print("========================================")
-    print("|cff00ff00[" .. addonName .. "]|r 파티 2차 스탯 분석")
-    print("========================================")
-
-    local partyStats = FindPartyHighestStats()
-    local highestStats = FindHighestForEachStat(partyStats)
-
-    -- 파티원 목록과 스탯
-    print("\\n|cffffff00파티 구성원 스탯:|r")
-    for playerName, data in pairs(partyStats) do
-        local stats = data.stats
-        local isPlayer = data.unit == "player"
-        local nameColor = isPlayer and "|cff00ff00" or "|cffffffff"
-
-        print(string.format("%s%s|r - 치명:%d, 가속:%d, 특화:%d, 유연:%d",
-            nameColor,
-            playerName,
-            stats.CRIT or 0,
-            stats.HASTE or 0,
-            stats.MASTERY or 0,
-            stats.VERSATILITY or 0))
-    end
-
-    -- 각 스탯별 최고 보유자
-    print("\\n|cffff8800각 스탯별 최고 보유자:|r")
-    for statKey, data in pairs(highestStats) do
-        local koreanName = STAT_NAMES[data.statID] or statKey
-        if data.playerName and data.value > 0 then
-            print(string.format("  |cffffff00%s|r: |cff00ff00%s|r (%d)",
-                koreanName,
-                data.playerName,
-                data.value))
-        else
-            print(string.format("  |cffffff00%s|r: |cffff0000정보 없음|r", koreanName))
-        end
-    end
-
-    if next(inspectedStats) == nil or (next(inspectedStats) ~= nil and next(inspectedStats, UnitName("player")) == nil) then
-        print("\\n|cffaaaaaa* 파티원 스탯을 보려면 /fs scan 명령을 사용하세요.|r")
-    end
-
-    print("========================================")
-end
 
 -- 슬래시 커맨드 등록
 SLASH_FINDSECONDSTAT1 = "/findstat"
 SLASH_FINDSECONDSTAT2 = "/fs"
 SlashCmdList["FINDSECONDSTAT"] = function(msg)
-    local args = {}
-    for word in msg:gmatch("%S+") do
-        table.insert(args, word)
-    end
+    local command = msg:match("%S+")
 
-    local command = args[1]
-
-    if command == "scan" or command == "inspect" then
+    if command == "scan" or command == nil or command == "" then
         -- 파티 전체 검사
         InspectAllPartyMembers()
-    elseif command == "test" then
-        -- 테스트 모드: /fs test <unit>
-        local unit = args[2] or "player"
-        TestGetUnitStats(unit)
     elseif command == "help" then
         print("|cff00ff00[" .. addonName .. "]|r 사용법:")
-        print("  /fs 또는 /findstat - 파티 2차 스탯 분석 결과 표시")
-        print("  /fs scan - 파티원 검사 시작 (근처에 있어야 함)")
-        print("  /fs test <unit> - 특정 유닛의 스탯 조회 테스트")
-        print("    예: /fs test player")
-        print("    예: /fs test target")
-        print("    예: /fs test party1")
+        print("  /fs 또는 /fs scan - 파티원 검사 시작 (근처에 있어야 함)")
     else
-        -- 기본 동작
-        PrintHighestStat()
+        print("|cffff0000[" .. addonName .. "]|r 알 수 없는 명령어: " .. command)
+        print("사용법: /fs help")
     end
 end
 
