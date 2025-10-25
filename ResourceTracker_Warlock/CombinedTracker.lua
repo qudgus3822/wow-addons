@@ -1,7 +1,7 @@
--- Combined Resource and Health Tracker
--- Shows Health and Maelstrom in one movable frame
+-- Combined Resource and Health Tracker (Warlock Version)
+-- Shows Health and Soul Shards in one movable frame
 
-local addonName = "CombinedTracker"
+local addonName = "CombinedTracker_Warlock"
 
 -- Locked state
 local isLocked = true
@@ -73,75 +73,67 @@ local healthBg = healthBar:CreateTexture(nil, "BACKGROUND")
 healthBg:SetAllPoints(healthBar)
 healthBg:SetColorTexture(0.1, 0.1, 0.1, 0.9)
 
--- Health percentage text (center) - REMOVED
--- local healthPercent = healthBar:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
--- healthPercent:SetPoint("CENTER", healthBar, "CENTER", 0, 0)
--- healthPercent:SetFont("Fonts\\FRIZQT__.TTF", 18, "OUTLINE")
--- healthPercent:SetText("100%")
-
--- Health detail text (left) - REMOVED
--- local healthDetail = healthBar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
--- healthDetail:SetPoint("LEFT", healthBar, "LEFT", 5, 0)
--- healthDetail:SetFont("Fonts\\FRIZQT__.TTF", 11, "OUTLINE")
--- healthDetail:SetText("HP")
--- healthDetail:SetTextColor(0.8, 0.8, 0.8, 1)
-
 -- ========================================
--- MAELSTROM BAR (only for Elemental Shaman)
+-- SOUL SHARDS BAR (for Warlocks)
 -- ========================================
 
--- Maelstrom frame
-local maelstromFrame = CreateFrame("Frame", nil, container)
-maelstromFrame:SetSize(180, 20)
-maelstromFrame:SetPoint("TOP", healthBar, "BOTTOM", 0, -5)
+-- Soul Shards frame
+local shardsFrame = CreateFrame("Frame", nil, container)
+shardsFrame:SetSize(180, 20)
+shardsFrame:SetPoint("TOP", healthBar, "BOTTOM", 0, -5)
 
--- Maelstrom progress bar (bigger, on top)
-local maelstromBar = CreateFrame("StatusBar", nil, maelstromFrame)
-maelstromBar:SetSize(180, 20)
-maelstromBar:SetPoint("TOP", maelstromFrame, "TOP", 0, 0)
-maelstromBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
-maelstromBar:SetMinMaxValues(0, 100)
-maelstromBar:SetValue(0)
-maelstromBar:GetStatusBarTexture():SetHorizTile(false)
+-- Create individual shard boxes (5 shards total, each can hold 10 fragments)
+local MAX_SHARDS = 5
+local FRAGMENTS_PER_SHARD = 10
+local SHARD_WIDTH = 34  -- (180 - 4*2) / 5 = 34.4, using 34 with gaps
+local SHARD_GAP = 2
+local shardBoxes = {}
 
--- Maelstrom text (on bar)
-local maelstromText = maelstromBar:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-maelstromText:SetPoint("LEFT", maelstromBar, "LEFT", 5, 0)
-maelstromText:SetFont("Fonts\\FRIZQT__.TTF", 22, "OUTLINE")
-maelstromText:SetText("0")
+for i = 1, MAX_SHARDS do
+    -- Create container for each shard
+    local box = CreateFrame("Frame", nil, shardsFrame)
+    box:SetSize(SHARD_WIDTH, 20)
 
--- Maelstrom label (below bar)
--- local maelstromLabel = maelstromFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
--- maelstromLabel:SetPoint("TOP", maelstromBar, "BOTTOM", 0, -2)
--- maelstromLabel:SetText("Maelstrom")
--- maelstromLabel:SetTextColor(0.5, 0.8, 1, 1)
+    if i == 1 then
+        box:SetPoint("LEFT", shardsFrame, "LEFT", 0, 0)
+    else
+        box:SetPoint("LEFT", shardBoxes[i-1], "RIGHT", SHARD_GAP, 0)
+    end
 
--- Maelstrom bar background
-local maelstromBg = maelstromBar:CreateTexture(nil, "BACKGROUND")
-maelstromBg:SetAllPoints(maelstromBar)
-maelstromBg:SetColorTexture(0.2, 0.2, 0.2, 0.8)
+    -- Background (dark)
+    local bg = box:CreateTexture(nil, "BACKGROUND")
+    bg:SetAllPoints(box)
+    bg:SetColorTexture(0.2, 0.2, 0.2, 0.8)
 
--- Threshold lines for Maelstrom (60 and 90)
-local threshold60 = maelstromBar:CreateTexture(nil, "OVERLAY")
-threshold60:SetSize(2, 20)
-threshold60:SetColorTexture(1, 1, 1, 0.5)
+    -- Foreground (purple when filled) - StatusBar for partial fill
+    local fg = CreateFrame("StatusBar", nil, box)
+    fg:SetAllPoints(box)
+    fg:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+    fg:SetStatusBarColor(0.6, 0, 0.9, 1)
+    fg:SetMinMaxValues(0, FRAGMENTS_PER_SHARD)
+    fg:SetValue(0)
+    fg:GetStatusBarTexture():SetHorizTile(false)
+    fg:SetOrientation("HORIZONTAL")
 
-local threshold90 = maelstromBar:CreateTexture(nil, "OVERLAY")
-threshold90:SetSize(2, 20)
-threshold90:SetColorTexture(1, 1, 1, 0.5)
+    -- Border
+    local border = box:CreateTexture(nil, "OVERLAY")
+    border:SetAllPoints(box)
+    border:SetColorTexture(0.5, 0.5, 0.5, 0.3)
 
--- Threshold labels
-local label60 = maelstromBar:CreateFontString(nil, "OVERLAY", "GameFontNormalTiny")
-label60:SetPoint("BOTTOM", threshold60, "TOP", 0, 1)
-label60:SetText("60")
-label60:SetTextColor(1, 1, 1, 0.6)
-label60:SetFont("Fonts\\FRIZQT__.TTF", 9, "OUTLINE")
+    -- Store references
+    box.bg = bg
+    box.fg = fg
+    box.border = border
 
-local label90 = maelstromBar:CreateFontString(nil, "OVERLAY", "GameFontNormalTiny")
-label90:SetPoint("BOTTOM", threshold90, "TOP", 0, 1)
-label90:SetText("90")
-label90:SetTextColor(1, 1, 1, 0.6)
-label90:SetFont("Fonts\\FRIZQT__.TTF", 9, "OUTLINE")
+    shardBoxes[i] = box
+end
+
+-- Soul Shards text (shows fragment count)
+local shardsText = shardsFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+shardsText:SetPoint("CENTER", shardsFrame, "CENTER", 0, 0)
+shardsText:SetFont("Fonts\\FRIZQT__.TTF", 18, "OUTLINE")
+shardsText:SetText("0")
+shardsText:SetTextColor(1, 1, 1, 1)
 
 -- ========================================
 -- HELPER FUNCTIONS
@@ -158,17 +150,24 @@ local function FormatNumber(num)
     end
 end
 
--- Update Maelstrom bar color
-local function UpdateMaelstromColor(value)
-    if value >= 90 then
-        maelstromBar:SetStatusBarColor(1, 0, 1, 1) -- Magenta (90+)
-    elseif value >= 60 then
-        maelstromBar:SetStatusBarColor(0, 1, 1, 1) -- Cyan (60+)
-    else
-        local r = 0.2 + (value / 100) * 0.3
-        local g = 0.5 + (value / 100) * 0.5
-        local b = 1.0
-        maelstromBar:SetStatusBarColor(r, g, b, 1) -- Gradient blue (below 60)
+-- Update Soul Shards boxes (each box represents 1 shard = 10 fragments)
+local function UpdateShardsBoxes(fragments)
+    for i = 1, MAX_SHARDS do
+        local shardStartFragment = (i - 1) * FRAGMENTS_PER_SHARD
+        local shardEndFragment = i * FRAGMENTS_PER_SHARD
+        local fragmentsInThisShard = math.max(0, math.min(FRAGMENTS_PER_SHARD, fragments - shardStartFragment))
+
+        -- Update the fill level of this shard
+        shardBoxes[i].fg:SetValue(fragmentsInThisShard)
+
+        -- Color based on total fragments
+        if fragments >= 40 then
+            shardBoxes[i].fg:SetStatusBarColor(0.8, 0, 1, 1) -- Bright purple (40-50)
+        elseif fragments >= 20 then
+            shardBoxes[i].fg:SetStatusBarColor(0.6, 0, 0.9, 1) -- Medium purple (20-39)
+        else
+            shardBoxes[i].fg:SetStatusBarColor(0.4, 0, 0.6, 1) -- Dark purple (0-19)
+        end
     end
 end
 
@@ -206,61 +205,42 @@ local function UpdateHealth()
     healthBar:SetValue(current)
 end
 
--- Update Maelstrom
-local function UpdateMaelstrom()
-    -- Check if player is Shaman
+-- Update Soul Shards
+local function UpdateSoulShards()
+    -- Check if player is Warlock
     local _, class = UnitClass("player")
-    if class ~= "SHAMAN" then
-        maelstromFrame:Hide()
-        container:SetSize(180, 20) -- Smaller size without Maelstrom
+    if class ~= "WARLOCK" then
+        shardsFrame:Hide()
+        container:SetSize(180, 20) -- Smaller size without Soul Shards
         containerBg:SetSize(180, 20)
         containerBg:SetPoint("TOPLEFT", healthBar, "TOPLEFT", 0, 0)
         return
     end
 
-    -- Check if Elemental spec (1=Elemental, 2=Enhancement, 3=Restoration)
-    local spec = GetSpecialization()
-    if not spec or spec ~= 1 then
-        maelstromFrame:Hide()
-        container:SetSize(180, 20) -- Smaller size without Maelstrom
-        containerBg:SetSize(180, 20)
-        containerBg:SetPoint("TOPLEFT", healthBar, "TOPLEFT", 0, 0)
-        return
-    end
-
-    -- Show Maelstrom frame
-    maelstromFrame:Show()
-    container:SetSize(180, 45) -- Full size with Maelstrom
+    -- Show Soul Shards frame
+    shardsFrame:Show()
+    container:SetSize(180, 45) -- Full size with Soul Shards
     containerBg:SetSize(180, 45)
     containerBg:SetPoint("TOPLEFT", healthBar, "TOPLEFT", 0, 0)
 
-    -- Get Maelstrom
-    local current = UnitPower("player", Enum.PowerType.Maelstrom)
-    local max = UnitPowerMax("player", Enum.PowerType.Maelstrom)
+    -- Get Soul Shard Fragments (0-50)
+    local fragments = UnitPower("player", Enum.PowerType.SoulShards)
+    local max = UnitPowerMax("player", Enum.PowerType.SoulShards)
+
+    DebugPrint("UpdateSoulShards: Fragments =", fragments, "/", max)
 
     -- Update display
-    maelstromText:SetText(current)
-    maelstromBar:SetValue(current)
-    maelstromBar:SetMinMaxValues(0, max)
-    UpdateMaelstromColor(current)
-
-    -- Update threshold positions based on max value
-    if max > 0 then
-        threshold60:ClearAllPoints()
-        threshold60:SetPoint("LEFT", maelstromBar, "LEFT", (180 * 60 / max), 0)
-
-        threshold90:ClearAllPoints()
-        threshold90:SetPoint("LEFT", maelstromBar, "LEFT", (180 * 90 / max), 0)
-    end
+    shardsText:SetText(tostring(fragments))
+    UpdateShardsBoxes(fragments)
 
     -- Keep text color white
-    maelstromText:SetTextColor(1, 1, 1, 1)
+    shardsText:SetTextColor(1, 1, 1, 1)
 end
 
 -- Update all
 local function UpdateAll()
     UpdateHealth()
-    UpdateMaelstrom()
+    UpdateSoulShards()
 end
 
 -- ========================================
@@ -284,14 +264,14 @@ container:SetScript("OnEvent", function(self, event, ...)
 
     if event == "ADDON_LOADED" then
         local loadedAddon = ...
-        if loadedAddon == "CombinedTracker" then
-            print("|cff00ff00[Combined Tracker]|r Loaded!")
+        if loadedAddon == "ResourceTracker_Warlock" then
+            print("|cff9900ff[Combined Tracker - Warlock]|r Loaded!")
             print("|cffffff00Use /ct move to unlock and drag the frame.|r")
 
             -- 저장된 디버그 설정 복원
             if CombinedTrackerDB.debugMode then
                 DEBUG_MODE = true
-                print("|cffffff00[Combined Tracker]|r Debug mode restored from saved settings")
+                print("|cffffff00[Combined Tracker - Warlock]|r Debug mode restored from saved settings")
             end
         end
     elseif event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" then
@@ -302,7 +282,7 @@ container:SetScript("OnEvent", function(self, event, ...)
     elseif event == "UNIT_POWER_UPDATE" or event == "UNIT_POWER_FREQUENT" then
         local unit = ...
         if unit == "player" then
-            UpdateMaelstrom()
+            UpdateSoulShards()
         end
     elseif event == "PLAYER_ENTERING_WORLD" then
         -- Safe initialization point - all player data is ready
@@ -331,43 +311,43 @@ SlashCmdList["COMBINEDTRACKER"] = function(msg)
 
     if command == "show" then
         container:Show()
-        print("|cff00ff00[Combined Tracker]|r Frame shown.")
+        print("|cff9900ff[Combined Tracker - Warlock]|r Frame shown.")
     elseif command == "hide" then
         container:Hide()
-        print("|cff00ff00[Combined Tracker]|r Frame hidden.")
+        print("|cff9900ff[Combined Tracker - Warlock]|r Frame hidden.")
     elseif command == "reset" then
         container:ClearAllPoints()
         container:SetPoint("CENTER", 0, -100)
-        print("|cff00ff00[Combined Tracker]|r Position reset.")
+        print("|cff9900ff[Combined Tracker - Warlock]|r Position reset.")
     elseif command == "move" or command == "unlock" then
         isLocked = false
         container:EnableMouse(true)
         dragText:SetText("🔓 Drag to move")
-        print("|cffffff00[Combined Tracker]|r Frame UNLOCKED. Drag to move.")
+        print("|cffffff00[Combined Tracker - Warlock]|r Frame UNLOCKED. Drag to move.")
     elseif command == "freeze" or command == "lock" then
         isLocked = true
         container:EnableMouse(false)
         dragText:SetText("")
-        print("|cff00ff00[Combined Tracker]|r Frame LOCKED.")
+        print("|cff9900ff[Combined Tracker - Warlock]|r Frame LOCKED.")
     elseif command == "debug" then
         DEBUG_MODE = not DEBUG_MODE
         CombinedTrackerDB.debugMode = DEBUG_MODE
         if DEBUG_MODE then
-            print("|cffffff00[Combined Tracker]|r Debug mode ENABLED")
-            print("|cffffff00[Combined Tracker]|r Logs will be saved to: WTF\\Account\\[ACCOUNT]\\SavedVariables\\ResourceTracker.lua")
+            print("|cffffff00[Combined Tracker - Warlock]|r Debug mode ENABLED")
+            print("|cffffff00[Combined Tracker - Warlock]|r Logs will be saved to: WTF\\Account\\[ACCOUNT]\\SavedVariables\\ResourceTracker_Warlock.lua")
         else
-            print("|cff00ff00[Combined Tracker]|r Debug mode DISABLED")
+            print("|cff9900ff[Combined Tracker - Warlock]|r Debug mode DISABLED")
         end
     elseif command == "clearlog" then
         CombinedTrackerDB.debugLog = {}
-        print("|cff00ff00[Combined Tracker]|r Debug log cleared.")
+        print("|cff9900ff[Combined Tracker - Warlock]|r Debug log cleared.")
     elseif command == "test" then
-        print("|cffffff00[Combined Tracker]|r Running test update...")
+        print("|cffffff00[Combined Tracker - Warlock]|r Running test update...")
         lastHealthUpdate = 0  -- Reset throttle
         UpdateAll()
-        print("|cff00ff00[Combined Tracker]|r Test complete.")
+        print("|cff9900ff[Combined Tracker - Warlock]|r Test complete.")
     else
-        print("|cff00ff00[Combined Tracker]|r Commands:")
+        print("|cff9900ff[Combined Tracker - Warlock]|r Commands:")
         print("  /ct move - Unlock frame (drag to move)")
         print("  /ct freeze - Lock frame (prevent moving)")
         print("  /ct show - Show frame")

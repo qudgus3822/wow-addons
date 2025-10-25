@@ -3,6 +3,7 @@
 ## Notes: Tracks resources and health for player
 ## Author: bhkim
 ## Version: 1.0.0
+## SavedVariables: CombinedTrackerDB
 
 #ResourceTracker.lua
 #HealthTracker.lua
