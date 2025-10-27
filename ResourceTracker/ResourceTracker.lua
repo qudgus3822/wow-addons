@@ -28,7 +28,7 @@ end
 
 -- Create main container frame
 local container = CreateFrame("Frame", "ResourceTrackerFrame", UIParent)
-container:SetSize(280, 60)
+container:SetSize(180, 20)
 container:SetPoint("CENTER", 0, -150)
 container:SetMovable(true)
 container:EnableMouse(false)
@@ -57,8 +57,8 @@ dragText:SetTextColor(1, 1, 0, 1)
 
 -- Resource progress bar
 local resourceBar = CreateFrame("StatusBar", nil, container)
-resourceBar:SetSize(280, 35)
-resourceBar:SetPoint("TOP", container, "TOP", 0, -10)
+resourceBar:SetSize(180, 20)
+resourceBar:SetPoint("CENTER", container, "CENTER", 0, 0)
 resourceBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
 resourceBar:SetMinMaxValues(0, 100)
 resourceBar:SetValue(0)
@@ -78,11 +78,11 @@ resourceBg:SetColorTexture(0.2, 0.2, 0.2, 0.8)
 
 -- Threshold lines (will be positioned dynamically)
 local threshold1 = resourceBar:CreateTexture(nil, "OVERLAY")
-threshold1:SetSize(2, 35)
+threshold1:SetSize(2, 20)
 threshold1:SetColorTexture(1, 1, 1, 0.5)
 
 local threshold2 = resourceBar:CreateTexture(nil, "OVERLAY")
-threshold2:SetSize(2, 35)
+threshold2:SetSize(2, 20)
 threshold2:SetColorTexture(1, 1, 1, 0.5)
 
 -- Threshold labels
@@ -182,11 +182,11 @@ local function UpdateResource()
 
     -- Update threshold positions
     threshold1:ClearAllPoints()
-    threshold1:SetPoint("LEFT", resourceBar, "LEFT", (280 * threshold1Val / max), 0)
+    threshold1:SetPoint("LEFT", resourceBar, "LEFT", (180 * threshold1Val / max), 0)
     label1:SetText(tostring(threshold1Val))
 
     threshold2:ClearAllPoints()
-    threshold2:SetPoint("LEFT", resourceBar, "LEFT", (280 * threshold2Val / max), 0)
+    threshold2:SetPoint("LEFT", resourceBar, "LEFT", (180 * threshold2Val / max), 0)
     label2:SetText(tostring(threshold2Val))
 
     DebugPrint("UpdateResource:", class, spec, "=", current, "/", max)
