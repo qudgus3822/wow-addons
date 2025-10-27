@@ -1,10 +1,8 @@
 ## Interface: 110002
 ## Title: Resource Tracker
-## Notes: Tracks resources and health for player
+## Notes: Tracks class-specific resources (Maelstrom, Soul Shards, etc)
 ## Author: bhkim
-## Version: 1.0.0
-## SavedVariables: CombinedTrackerDB
+## Version: 2.0.0
+## SavedVariables: ResourceTrackerDB
 
-#ResourceTracker.lua
-#HealthTracker.lua
-CombinedTracker.lua
+ResourceTracker.lua

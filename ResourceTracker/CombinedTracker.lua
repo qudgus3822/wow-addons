@@ -6,6 +6,9 @@ local addonName = "CombinedTracker"
 -- Locked state
 local isLocked = true
 
+-- Settings
+-- local showHealthBar = false  -- Health Bar 기본값: 꺼짐
+
 -- Initialize SavedVariables
 CombinedTrackerDB = CombinedTrackerDB or {
     debugMode = false,
