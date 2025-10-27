@@ -17,7 +17,8 @@
     "Lua.diagnostics.globals": [
         "SlashCmdList",
         "UIFrameFlash",
-        "UIFrameFlashStop"
+        "UIFrameFlashStop",
+        "Settings"
     ],
     "Lua.type.weakUnionCheck": true
 }

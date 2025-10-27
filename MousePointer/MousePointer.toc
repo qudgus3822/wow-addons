@@ -1,0 +1,7 @@
+## Interface: 110002
+## Title: Mouse Pointer Tracker
+## Notes: Shows a circle indicator at your mouse cursor position, even during camera rotation
+## Author: bhkim
+## Version: 1.0.0
+
+MousePointer.lua
