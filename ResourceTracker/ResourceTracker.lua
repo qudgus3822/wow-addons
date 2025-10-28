@@ -66,7 +66,7 @@ resourceBar:GetStatusBarTexture():SetHorizTile(false)
 
 -- Resource text (on bar)
 local resourceText = resourceBar:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-resourceText:SetPoint("CENTER", resourceBar, "CENTER", 0, 0)
+resourceText:SetPoint("LEFT", resourceBar, "LEFT", 5, 0)
 resourceText:SetFont("Fonts\\FRIZQT__.TTF", 22, "OUTLINE")
 resourceText:SetText("0")
 resourceText:SetTextColor(1, 1, 1, 1)
