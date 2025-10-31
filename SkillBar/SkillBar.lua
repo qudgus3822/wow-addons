@@ -299,6 +299,11 @@ end)
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
+eventFrame:RegisterEvent("SPELL_UPDATE_USABLE")
+eventFrame:RegisterEvent("SPELLS_CHANGED")
+eventFrame:RegisterEvent("UPDATE_SHAPESHIFT_FORM")
+eventFrame:RegisterEvent("ACTIONBAR_UPDATE_COOLDOWN")
+eventFrame:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
 eventFrame:SetScript("OnEvent", function(_, event, addonName)
     if event == "ADDON_LOADED" and addonName == ADDON_NAME then
         -- 데이터베이스 초기화
@@ -310,6 +315,13 @@ eventFrame:SetScript("OnEvent", function(_, event, addonName)
         -- 설정 불러오기
         LoadSettings()
         print("|cff00ff00[SkillBar]|r 로드됨! /skb 명령어로 설정하세요")
+    elseif event == "SPELL_UPDATE_USABLE" or
+           event == "SPELLS_CHANGED" or
+           event == "UPDATE_SHAPESHIFT_FORM" or
+           event == "ACTIONBAR_UPDATE_COOLDOWN" or
+           event == "PLAYER_SPECIALIZATION_CHANGED" then
+        -- 스킬 오버라이드나 상태 변경 시 즉시 업데이트
+        UpdateCooldowns()
     end
 end)
 
