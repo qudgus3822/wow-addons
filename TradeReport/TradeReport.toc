@@ -1,0 +1,8 @@
+## Interface: 110002
+## Title: TradeReport
+## Notes: 거래 완료 시 거래 내역을 출력합니다
+## Author: YourName
+## Version: 1.0
+## SavedVariables: TradeReportDB
+
+TradeReport.lua
