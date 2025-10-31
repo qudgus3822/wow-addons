@@ -18,7 +18,10 @@
         "SlashCmdList",
         "UIFrameFlash",
         "UIFrameFlashStop",
-        "Settings"
+        "Settings",
+        "MAX_TRADABLE_ITEMS",
+        "TradeFrameRecipientNameText",
+        "GetUnitName"
     ],
     "Lua.type.weakUnionCheck": true
 }
