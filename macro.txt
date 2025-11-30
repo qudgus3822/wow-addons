@@ -1,0 +1,2 @@
+#showtooltip
+/cast [@focus,help,nodead][@target,help,nodead][@party5,help,nodead][@party4,help,nodead] 대지의 보호막
